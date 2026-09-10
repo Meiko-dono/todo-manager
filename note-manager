@@ -1,46 +1,90 @@
 #!/bin/python3
 
+from datetime import datetime
+from io import TextIOWrapper
 from os import environ
 from pathlib import Path
+from sys import exit as xit
 
-def exist_havedone_archive(todo_root_dir : Path) -> bool:
-    return (todo_root_dir / 'Archive' / 'HAVEDONE').is_dir()
+class Todo:
+    def __init__(self, title_ : str, descr_ : str = ''):
+        self.title : str = title_
+        self.descr : str = descr_
 
-def setup_havedone_archive():
 
+def title_to_filename(title : str) -> str:
+    return '_' +  "".join([x if x.isalnum() else "_" for x in title[:58]]) + '.md'
 
-def manage(todo : str):
-    print(todo)
+def archive(todo : Todo, archive_path : Path, file_index : int):
+    file_path = archive_path / (str(file_index).zfill(3) + title_to_filename(todo.title))
+    markdown = f'''
+    #{todo.title}
 
-    root_dir = Path(todo).parent
+    {todo.descr}
+    '''
+    _ = file_path.write_text(markdown)
 
-    if not exist_havedone_archive(root_dir):
-        setup_havedone_archive()
+def skip_lines_till_checked(fs : TextIOWrapper, last_line : str):
+    while(not last_line.startswith('- [x]')):
+        last_line = fs.readline()
+    return last_line
 
-    if havedone_todos()
-        write_havedone_archive()
+def extract_checked_todo(acc: list[Todo], fs : TextIOWrapper, last_line : str):
+    if (len(last_line) == 0):
+        return
+
+    last_line = skip_lines_till_checked(fs, last_line)
+
+    descr = ''
+    curr_line = fs.readline()
+    while(len(curr_line) > 0 and not curr_line.startswith('-')):
+        descr += curr_line
+        curr_line = fs.readline()
     
-    # Open 
+    acc.append(Todo(last_line[6:], descr))
+    del descr, last_line # aggressive manual garbage collecting, not sure if helpful
+    extract_checked_todo(acc, fs, curr_line)
 
+def manage(work_dir : Path, today : str):
+    print(work_dir)
 
+    archive_path = work_dir / f'Archive/HAVEDONE/{today}'
+    archive_path.mkdir(parents=True, exist_ok=True)
+
+    havedone: list[Todo] = []
+    with (work_dir / 'TODO.md').open('r') as fs:
+        extract_checked_todo(havedone, fs, fs.readline())
+
+    # Double iteration, could have written notes during extraction.
+    #   Somewhat inefficient, but at this scale honestly whatever
+    note_count = sum(1 for _ in archive_path.iterdir())
+    for todo in havedone:
+        note_count += 1
+        archive(todo, archive_path, note_count)
+    
 
 def main():
-    NOTES_BASEDIR = environ.get('NOTES')
-
+    VAULT_DIR = environ.get('VAULT')
+    
     try:
-        NOTES_BASEDIR = Path(NOTES_BASEDIR)
-        if not NOTES_BASEDIR.is_dir():
+        if VAULT_DIR is None:
+            raise NotADirectoryError('Invalid Directory Path!')
+
+        VAULT_PATH = Path(VAULT_DIR)    
+
+        if not VAULT_PATH.is_dir():
             raise NotADirectoryError('Directory does not exist!')
-        if not (NOTES_BASEDIR/'.obsidian').is_dir():
+        if not (VAULT_PATH / '.obsidian').is_dir():
             raise FileNotFoundError('Not an obsidian directory!')
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f'Failed to open notes directory! - Error:\n{e}')
-        exit(1)
+        xit(1)
 
-    all_todos = list(NOTES_BASEDIR.rglob("TODO.md"))
+    all_todos = list(VAULT_PATH.rglob("TODO.md"))
 
+    today = datetime.today().strftime('%Y/%m/%d')  # noqa: DTZ002
     for todo in all_todos:
-        manage(todo)
+        manage(todo.parent, today)
 
     print('done')
 
