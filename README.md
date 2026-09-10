@@ -1,3 +1,7 @@
+## In Progress
+- [ ] Rewrite the extraction logic to make removal of extracted TODOs easier.
+- [ ] Test the script on more usecases.
+
 ## Problem Statement
 Obsidian is great for taking notes, but not so great for tracking TODOs. The checkboxes quickly accumulate, leading to a cluttered and chaotic note with a mix of completed, half-completed and incomplete tasks. Obsidian provides no easy means to remove completed TODOs without losing any data, i.e. it lacks an automatic archiving feature.
 
@@ -39,7 +43,3 @@ The above will get archived in a file with the name as in the previous file-tree
 ```
 
 The `Archive` folder structure is automatically built based on the date this script was invoked. Only the `TODO.md` is a hard prerequisite. 
-
-## In Progress
-- [ ] Rewrite the extraction logic to make removal of extracted TODOs easier.
-- [ ] Test the script on more usecases.
