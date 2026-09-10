@@ -1,0 +1,49 @@
+#!/bin/python3
+
+from os import environ
+from pathlib import Path
+
+def exist_havedone_archive(todo_root_dir : Path) -> bool:
+    return (todo_root_dir / 'Archive' / 'HAVEDONE').is_dir()
+
+def setup_havedone_archive():
+
+
+def manage(todo : str):
+    print(todo)
+
+    root_dir = Path(todo).parent
+
+    if not exist_havedone_archive(root_dir):
+        setup_havedone_archive()
+
+    if havedone_todos()
+        write_havedone_archive()
+    
+    # Open 
+
+
+
+def main():
+    NOTES_BASEDIR = environ.get('NOTES')
+
+    try:
+        NOTES_BASEDIR = Path(NOTES_BASEDIR)
+        if not NOTES_BASEDIR.is_dir():
+            raise NotADirectoryError('Directory does not exist!')
+        if not (NOTES_BASEDIR/'.obsidian').is_dir():
+            raise FileNotFoundError('Not an obsidian directory!')
+    except Exception as e:
+        print(f'Failed to open notes directory! - Error:\n{e}')
+        exit(1)
+
+    all_todos = list(NOTES_BASEDIR.rglob("TODO.md"))
+
+    for todo in all_todos:
+        manage(todo)
+
+    print('done')
+
+
+if  __name__ == '__main__':
+    main()
