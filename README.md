@@ -34,9 +34,8 @@ This script assumes a specific folder structure, namely:
 │   ├── TODO.md
 │   └── Archive/
 │       └── YYYY/
-│           └── MM/
-│               └── DD/
-│                   └── 001_This_was_once_the_text_of_a_todo_and_got_truncate.md
+│           └── MM-DD/
+│               └── 001_This_was_once_the_text_of_a_todo_and_got_truncate.md
 └── Some other Group/
     └── TODO.md
 ```
