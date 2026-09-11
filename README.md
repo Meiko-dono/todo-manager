@@ -21,7 +21,7 @@ For more details see [the next section](#principle).
 
 To launch the script, simply run it with the environment variable `VAULT` like:
 ```
-VAULT=/global/path/to/my/vault note-manager
+VAULT=/global/path/to/my/vault todo-manager
 ```
 
 The above command assumes the script is discoverable through the users PATH.
