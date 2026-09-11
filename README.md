@@ -1,13 +1,32 @@
-## In Progress
-- [ ] Rewrite the extraction logic to make removal of extracted TODOs easier.
-- [ ] Test the script on more usecases.
-
 ## Problem Statement
-Obsidian is great for taking notes, but not so great for tracking TODOs. The checkboxes quickly accumulate, leading to a cluttered and chaotic note with a mix of completed, half-completed and incomplete tasks. Obsidian provides no easy means to remove completed TODOs without losing any data, i.e. it lacks an automatic archiving feature.
+Obsidian is great for taking notes, but not so great for tracking TODOs:
 
-This is where todo-manager comes in. By invoking this script, all checked TODOs are moved to a systematic archive folder, cleaning up your "TODO note" without losing any data.
+- Checkboxes quickly accumulate, cluttering the TODO note.
+- There are no means to automatically archive completed TODOs.
+
+This is where todo-manager comes in. By invoking this script, all checked TODOs are moved to a date-structured archive directory, cleaning up your active TODOs without data loss.
+
+## Requirements
+
+This script only relies on the python standard library. Testing was performed on v3.14, but any reasonably modern version will *probably* do.
 
 ## Usage
+Before use, **make sure** you understand these rules to avoid data loss. Use at your own risk.
+
+- This script scans a vault's subdirectories for notes named `TODO.md`.
+- Any directory containing a `TODO.md` is considered a `Group`.
+- For each `Group` this script creates its own `Archive`.
+
+For more details see [the next section](#principle).
+
+To launch the script, simply run it with the environment variable `VAULT` like:
+```
+VAULT=/global/path/to/my/vault note-manager
+```
+
+The above command assumes the script is discoverable through the users PATH.
+
+## Principle
 This script assumes a specific folder structure, namely:
 
 ```
@@ -43,3 +62,5 @@ The above will get archived in a file with the name as in the previous file-tree
 ```
 
 The `Archive` folder structure is automatically built based on the date this script was invoked. Only the `TODO.md` is a hard prerequisite. 
+
+Finally, all completed tasks are removed from the original `TODO.md`.
