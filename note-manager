@@ -1,93 +1,152 @@
 #!/bin/python3
 
 from datetime import datetime
-from io import TextIOWrapper
+from io import SEEK_SET, TextIOWrapper
 from os import environ
 from pathlib import Path
 from sys import exit as xit
 
+
 class Todo:
-    def __init__(self, title_ : str, descr_ : str = ''):
-        self.title : str = title_
-        self.descr : str = descr_
+    def __init__(self, title_: str, descr_: str = ""):
+        self.title: str = title_.strip() if len(title_) > 0 else "Untitled"
+        self.descr: str = self.trim_tab_per_line(descr_) if len(descr_) > 0 else "\n*No content*"
 
+    @staticmethod
+    def trim_tab_per_line(nested_text: str):
+        """Kind of crappy way to trim a single `tab` or equal amount of spaces per line.
 
-def title_to_filename(title : str) -> str:
-    return '_' +  "".join([x if x.isalnum() else "_" for x in title[:58]]) + '.md'
+        Args:
+            text: The string getting the tabs or spaces trimmed."""
+        normalized_text = "\n" + nested_text
+        subtext = "\n\t" if nested_text[0] == "\t" else "\n    "
+        return normalized_text.replace(subtext, "\n")
 
-def archive(todo : Todo, archive_path : Path, file_index : int):
-    file_path = archive_path / (str(file_index).zfill(3) + title_to_filename(todo.title))
-    markdown = f'''
-    #{todo.title}
-
-    {todo.descr}
-    '''
-    _ = file_path.write_text(markdown)
-
-def skip_lines_till_checked(fs : TextIOWrapper, last_line : str):
-    while(not last_line.startswith('- [x]')):
-        last_line = fs.readline()
-    return last_line
-
-def extract_checked_todo(acc: list[Todo], fs : TextIOWrapper, last_line : str):
-    if (len(last_line) == 0):
-        return
-
-    last_line = skip_lines_till_checked(fs, last_line)
-
-    descr = ''
-    curr_line = fs.readline()
-    while(len(curr_line) > 0 and not curr_line.startswith('-')):
-        descr += curr_line
-        curr_line = fs.readline()
-    
-    acc.append(Todo(last_line[6:], descr))
-    del descr, last_line # aggressive manual garbage collecting, not sure if helpful
-    extract_checked_todo(acc, fs, curr_line)
-
-def manage(work_dir : Path, today : str):
-    print(work_dir)
-
-    archive_path = work_dir / f'Archive/HAVEDONE/{today}'
-    archive_path.mkdir(parents=True, exist_ok=True)
-
-    havedone: list[Todo] = []
-    with (work_dir / 'TODO.md').open('r') as fs:
-        extract_checked_todo(havedone, fs, fs.readline())
-
-    # Double iteration, could have written notes during extraction.
-    #   Somewhat inefficient, but at this scale honestly whatever
-    note_count = sum(1 for _ in archive_path.iterdir())
-    for todo in havedone:
-        note_count += 1
-        archive(todo, archive_path, note_count)
-    
 
 def main():
-    VAULT_DIR = environ.get('VAULT')
-    
+    VAULT_DIR = environ.get("VAULT")
+
     try:
         if VAULT_DIR is None:
-            raise NotADirectoryError('Invalid Directory Path!')
+            raise NotADirectoryError("Invalid Directory Path!")
 
-        VAULT_PATH = Path(VAULT_DIR)    
+        VAULT_PATH = Path(VAULT_DIR)
 
         if not VAULT_PATH.is_dir():
-            raise NotADirectoryError('Directory does not exist!')
-        if not (VAULT_PATH / '.obsidian').is_dir():
-            raise FileNotFoundError('Not an obsidian directory!')
+            raise NotADirectoryError("Directory does not exist!")
+        if not (VAULT_PATH / ".obsidian").is_dir():
+            raise FileNotFoundError("Not an obsidian directory!")
     except Exception as e:  # noqa: BLE001
-        print(f'Failed to open notes directory! - Error:\n{e}')
+        print(f"Failed to open notes directory! - Error:\n{e}")
         xit(1)
 
     all_todos = list(VAULT_PATH.rglob("TODO.md"))
 
-    today = datetime.today().strftime('%Y/%m/%d')  # noqa: DTZ002
+    today = datetime.today().strftime("%Y/%m-%d")  # noqa: DTZ002
     for todo in all_todos:
-        manage(todo.parent, today)
+        process_todo(todo.parent, today)
 
-    print('done')
+    print("done")
 
 
-if  __name__ == '__main__':
+def process_todo(work_dir: Path, today: str):
+    """Cleans a Group's TODO.md (under `work_dir`) and archives completed TODOs.
+
+    Args:
+        work_dir: Path to a Group's directory containing TODO.md.
+        today: Date at the system's time of execution, formatted as YYYY/MM/DD"""
+
+    print(f'[\"{work_dir}\"]')
+
+    havedone: list[Todo] = []
+    todos: list[str] = []
+
+    with (work_dir / "TODO.md").open("r+") as fs:
+        last_line = skip_lines_till_todo(fs, fs.readline())
+        while len(last_line) > 0:
+            last_line = sort_todo(acc_havedone=havedone, acc_todo=todos, fs=fs, last_line=last_line)
+        if len(todos) > 0:
+            writeback_still_todos(fs, "".join(todos))
+
+    print(f'    Archiving {len(havedone)} tasks...\n')
+    if len(havedone) > 0:
+        archive_path = work_dir / f"Archive/HAVEDONE/{today}"
+        archive_path.mkdir(parents=True, exist_ok=True)
+        note_count = sum(1 for _ in archive_path.iterdir())
+        archive(havedone, archive_path, note_count)
+
+
+def skip_lines_till_todo(fs: TextIOWrapper, last_line: str):
+    """Skips a file's content until an Obsidian Checkbox is encountered.
+
+    Args:
+        fs: Filestream of an opened TODO.md.
+        last_line: The line that was last-read to detect the start of a Checkbox."""
+
+    while not last_line.startswith("- ["):
+        last_line = fs.readline()
+    return last_line
+
+
+def sort_todo(acc_havedone: list[Todo], acc_todo: list[str], fs: TextIOWrapper, last_line: str):
+    """Sorts and accumulates a TODO.md's checkboxes into complete and incomplete tasks.
+
+    Args:
+        acc_havedone: List accumulating completed top-level checkboxes with their nested contents.
+        acc_todo: String accumulating incomplete top-level checkboxes with their nested contents.
+        fs: Filestream of an opened TODO.md.
+        last_line: The line that was last-read to detect the start of a Checkbox."""
+
+    descr = ""
+    curr_line = fs.readline()
+    while len(curr_line) > 0 and not curr_line.startswith("-"):
+        descr += curr_line
+        curr_line = fs.readline()
+
+    if last_line.startswith("- [x]"):
+        acc_havedone.append(Todo(last_line[6:], descr))
+    else:
+        acc_todo.append(last_line + descr)
+    return curr_line
+
+
+def writeback_still_todos(fs: TextIOWrapper, todo: str):
+    """Overwrites a TODO.md's contents with only incomplete tasks. Any text before the first checkbox is preserved.
+
+    Args:
+        fs: Filestream of an opened TODO.md."""
+
+    _ = fs.seek(0)
+    last_cookie = 0
+    last_line = fs.readline()
+
+    while not last_line.startswith("- ["):
+        last_cookie = fs.tell()
+        last_line = fs.readline()
+
+    _ = fs.seek(last_cookie, SEEK_SET)
+    _ = fs.write(todo)
+    _ = fs.truncate()
+
+
+def archive(havedone: list[Todo], archive_path: Path, file_index: int):
+    """Writes a list of provided TODOs into files.
+
+    Args:
+        havedone: The list of TODOs that are written to file.
+        archive_oath: The path to which the files are written to. It is assumed to exist.
+        file_index: The starting index with which the filenames are prepended with. This is usually equal to the number of existing files for a given date."""
+    for did in havedone:
+        file_index += 1
+        file_path = archive_path / (str(file_index).zfill(3) + title_to_filename(did.title))
+        markdown = f"## {did.title}\n{did.descr}"
+        print(file_path)
+        _ = file_path.write_text(markdown)
+
+
+def title_to_filename(title: str) -> str:
+    return "_" + "".join([x if x.isalnum() else "_" for x in title[:58]]) + ".md"
+
+
+if __name__ == "__main__":
     main()
