@@ -82,7 +82,7 @@ def skip_lines_till_todo(fs: TextIOWrapper, last_line: str):
         fs: Filestream of an opened TODO.md.
         last_line: The line that was last-read to detect the start of a Checkbox."""
 
-    while not last_line.startswith("- ["):
+    while len(last_line) > 0 and not last_line.startswith("- ["):
         last_line = fs.readline()
     return last_line
 
@@ -119,7 +119,7 @@ def writeback_still_todos(fs: TextIOWrapper, todo: str):
     last_cookie = 0
     last_line = fs.readline()
 
-    while not last_line.startswith("- ["):
+    while len(last_line) > 0 and not last_line.startswith("- ["):
         last_cookie = fs.tell()
         last_line = fs.readline()
 
