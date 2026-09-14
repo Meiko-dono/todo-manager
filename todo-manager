@@ -46,7 +46,7 @@ def main():
     for todo in all_todos:
         process_todo(todo.parent, today)
 
-    print("done")
+    input("done")
 
 
 def process_todo(work_dir: Path, today: str):
@@ -65,8 +65,7 @@ def process_todo(work_dir: Path, today: str):
         last_line = skip_lines_till_todo(fs, fs.readline())
         while len(last_line) > 0:
             last_line = sort_todo(acc_havedone=havedone, acc_todo=todos, fs=fs, last_line=last_line)
-        if len(todos) > 0:
-            writeback_still_todos(fs, "".join(todos))
+        writeback_still_todos(fs, "".join(todos))
 
     print(f'    Archiving {len(havedone)} tasks...\n')
     if len(havedone) > 0:
@@ -140,8 +139,9 @@ def archive(havedone: list[Todo], archive_path: Path, file_index: int):
         file_index += 1
         file_path = archive_path / (str(file_index).zfill(3) + title_to_filename(did.title))
         markdown = f"## {did.title}\n{did.descr}"
-        print(file_path)
+        print(f'    {file_path}')
         _ = file_path.write_text(markdown)
+    print('\n')
 
 
 def title_to_filename(title: str) -> str:
